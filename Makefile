@@ -1,6 +1,11 @@
 CC = gcc
 CFLAGS = -Wall -Wextra -std=c99 -O2
-LDFLAGS = -lm
+RAYLIB_PATH = /usr/local/include/
+RAYLIB_LIB = /usr/local/lib/libraylib.a
+
+CFLAGS += -I$(RAYLIB_PATH)
+
+LDFLAGS = -L$(RAYLIB_LIB) -lraylib -lm 
 
 # Source files
 SRC = main.c chip8.c
