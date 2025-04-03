@@ -220,7 +220,7 @@ void Emulate(Chip8 *cpu) {
     case 0xC: {
       break;
     }
-    case 0xD: {
+    case 0xD:
       printf("DISPLAY\n");
       // Draw an N pixel tall sprite from mem location I, at horizontal
       // coordinate X in VX and Y coordinate in VY.
@@ -240,47 +240,43 @@ void Emulate(Chip8 *cpu) {
       for (uint16_t row = 0; row < spriteHeight; row++) {
         // Draw a sprite from mem location I
         uint16_t sprite = cpu->memory[cpu->indexReg + row];
+        printf("Sprite %d\n", sprite);
         // Sprite's width is always 8
         for (uint16_t col = 0; col < 8; col++) {
           // Extract pixel by MSB
           uint8_t pixel = (sprite >> (7 - col)) & 1;
-          // uint8_t pixel = sprite & (0x80 >> col);
+          // printf("pixel: %08b\n", pixel);
+          //  uint8_t pixel = sprite & (0x80 >> col);
 
           // "Wrap around" x and y (otherwise we will draw off the screen)
           uint16_t x = spriteX & 63;
           uint16_t y = spriteY & 31;
-          uint16_t index = y * 64 + x;
+          // This was the bug. We want the wrap around values PLUS the actual
+          // row and col values (offset by 64 to index)
+          uint16_t index = (((y + row) * 64) + x + col);
+          // printf("Index %d\n", index);
 
           // Current pixel is on AND pixel at (x, y) is on, turn the pixel
           // off.
-
-          /*
-          if (pixel && cpu->display[y * 64 + x]) {
+          if (!(pixel ^ cpu->display[index])) {
             cpu->reg[0xF] = 1;
           } else if (pixel) {
-            cpu->display[y * 64 + x] ^= 1;
-          }
-            */
-          if (pixel) {
-            if (cpu->display[index]) {
-              cpu->reg[0xF] = 1;
-            }
             cpu->display[index] ^= 1;
           }
-          break;
         }
-      case 0xE: {
-        break;
       }
-      case 0xF: {
-        break;
-      }
-      }
+      break;
+    case 0xE: {
+      break;
+    }
+    case 0xF: {
+      break;
     }
     }
   }
 
   if (cpu->soundTimer > 0) {
+    printf("sound timer: %d\n", cpu->soundTimer);
     if (cpu->soundTimer) {
       cpu->playAudio = true;
     }
