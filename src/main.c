@@ -1,6 +1,9 @@
 #include "chip8.h"
 #include "raylib.h"
 #include <stdlib.h>
+#include <unistd.h>
+
+#define SCALE 10
 
 int main(int argc, char *argv[]) {
   if (argc < 3) {
@@ -21,18 +24,9 @@ int main(int argc, char *argv[]) {
 
   const int screenWidth = 64;
   const int screenHeight = 32;
-  const int scale = 10;
-  /*
-  for (unsigned int i = 0; i < sizeof(chip8->memory); i++) {
-    if (chip8->memory[i] == 0 || i <= 80) {
-      continue;
-    }
-    printf("%x\n", chip8->memory[i]);
-  }
-  */
 
   // Chip8 window
-  InitWindow(screenWidth * scale, screenHeight * scale, "CHIP-8 Emulator");
+  InitWindow(screenWidth * SCALE, screenHeight * SCALE, "CHIP-8 Emulator");
 
   // Chip8 Audio device
   InitAudioDevice();
@@ -46,26 +40,23 @@ int main(int argc, char *argv[]) {
 
   while (!WindowShouldClose()) {
     // Update
-    if (IsKeyPressed(KEY_P)) {
-      PlaySound(beep);
-    }
+    Emulate(chip8);
 
-    for (int i = 0; i < delay; i++) {
-      Emulate(chip8);
+    if (chip8->playAudio) {
+      PlaySound(beep);
+      chip8->playAudio = false;
     }
 
     // Draw
     BeginDrawing();
 
-    for (int x = 0; x < 64; x++) {
-      for (int y = 0; y < 32; y++) {
-        if (chip8->display[y * 64 + x] != 0) {
-          DrawRectangle(x * scale, y * scale, scale, scale, WHITE);
-        }
-      }
-    }
+    ClearBackground(BLACK);
+
+    DrawScreen(chip8);
 
     EndDrawing();
+
+    usleep(delay);
   }
 
   UnloadSound(beep);
@@ -74,4 +65,18 @@ int main(int argc, char *argv[]) {
 
   CloseWindow();
   return 0;
+}
+
+void DrawScreen(const Chip8 *chip8) {
+  for (uint16_t row = 0; row < 32; row++) {
+    for (uint16_t col = 0; col < 64; col++) {
+      // Each row has 64 pixels
+      // To find the index in our 1D flattened 2D array, we should
+      // multiply row * width, and then add the column offset to get to the
+      // pixel.
+      if (chip8->display[row * 64 + col]) {
+        DrawRectangle(col * SCALE, row * SCALE, SCALE, SCALE, WHITE);
+      }
+    }
+  }
 }

@@ -54,7 +54,7 @@ Chip8 *CreateChip8() {
     cpu->memory[i + 0x0] = FONTS[i];
     // printf("Font data: %x\n", cpu->memory[i + 0x0]);
   }
-  cpu->stored = 0x0;
+  cpu->playAudio = false;
   return cpu;
 }
 
@@ -108,7 +108,6 @@ bool LoadRom(Chip8 *cpu, const char *path) {
     memcpy(&cpu->memory[memOffset], buf, bytesRead);
     printf("%x\n", cpu->memory[memOffset]);
     memOffset += bytesRead;
-    cpu->stored += bytesRead;
   }
 
   if (bytesRead < 0) {
@@ -117,7 +116,6 @@ bool LoadRom(Chip8 *cpu, const char *path) {
     close(tempFd);
     return false;
   }
-  printf("%d\n", cpu->stored);
 
   close(fd);
   close(tempFd);
@@ -156,15 +154,7 @@ void Emulate(Chip8 *cpu) {
   if (cpu->pc < sizeof(cpu->memory)) {
     // NOTE: Fetch
     opcode = cpu->memory[cpu->pc] << 8 | cpu->memory[cpu->pc + 1];
-    /*
-    if (opcode != 0) {
-      printf("opcode: %04x\n", opcode);
-    }
-    */
     cpu->pc += 2;
-    if (opcode == 0x0000) {
-      return;
-    }
 
     uint8_t firstNibble = OPCODE_FIRST(opcode);
     switch (firstNibble) {
@@ -188,9 +178,7 @@ void Emulate(Chip8 *cpu) {
       break;
     }
     case 0x1: {
-      // printf("JUMP NNN\n");
       cpu->pc = OPCODE_NNN(opcode);
-      // Do NOT increment pc
       break;
     }
     case 0x2: {
@@ -242,36 +230,60 @@ void Emulate(Chip8 *cpu) {
       // Otherwise, 0.
       uint16_t spriteX = cpu->reg[OPCODE_X(opcode)];
       uint16_t spriteY = cpu->reg[OPCODE_Y(opcode)];
-      uint16_t height = OPCODE_N(opcode);
+      uint16_t spriteHeight = OPCODE_N(opcode);
+      printf("spriteX, spriteY, height: %d %d %d\n", spriteX, spriteY,
+             spriteHeight);
 
-      // coordinates are modulo the size of the display when counting from 0
       cpu->reg[0xF] = 0;
-      // Set the X coordinate to the value in VX modulo 64 (or, equivalently, VX
-      // & 63, where & is the binary AND operation)
-      // Set the Y coordinate to the value in VY modulo 32 (or VY & 31)
-      // Set VF to 0
-      // For N rows:
-      //   Get the Nth byte of sprite data, counting from the memory address in
-      //   the I register (I is not incremented)
-      //  For each of the 8 pixels/bits in this sprite row (from left to right,
-      //  ie. from most to least significant bit):
-      //     If the current pixel in the sprite row is on and the pixel at
-      //     coordinates X,Y on the screen is also on, turn off the pixel and
-      //     set VF to 1
-      //    Or if the current pixel in the sprite row is on and the screen pixel
-      //    is not, draw the pixel at the X and Y coordinates
-      //   If you reach the right edge of the screen, stop drawing this row
-      //   Increment X (VX is not incremented)
-      // Increment Y (VY is not incremented)
-      // Stop if you reach the bottom edge of the screen
-      break;
+
+      // Grab N'th byte of sprite data up to N.
+      for (uint16_t row = 0; row < spriteHeight; row++) {
+        // Draw a sprite from mem location I
+        uint16_t sprite = cpu->memory[cpu->indexReg + row];
+        // Sprite's width is always 8
+        for (uint16_t col = 0; col < 8; col++) {
+          // Extract pixel by MSB
+          uint8_t pixel = (sprite >> (7 - col)) & 1;
+          // uint8_t pixel = sprite & (0x80 >> col);
+
+          // "Wrap around" x and y (otherwise we will draw off the screen)
+          uint16_t x = spriteX & 63;
+          uint16_t y = spriteY & 31;
+          uint16_t index = y * 64 + x;
+
+          // Current pixel is on AND pixel at (x, y) is on, turn the pixel
+          // off.
+
+          /*
+          if (pixel && cpu->display[y * 64 + x]) {
+            cpu->reg[0xF] = 1;
+          } else if (pixel) {
+            cpu->display[y * 64 + x] ^= 1;
+          }
+            */
+          if (pixel) {
+            if (cpu->display[index]) {
+              cpu->reg[0xF] = 1;
+            }
+            cpu->display[index] ^= 1;
+          }
+          break;
+        }
+      case 0xE: {
+        break;
+      }
+      case 0xF: {
+        break;
+      }
+      }
     }
-    case 0xE: {
-      break;
     }
-    case 0xF: {
-      break;
+  }
+
+  if (cpu->soundTimer > 0) {
+    if (cpu->soundTimer) {
+      cpu->playAudio = true;
     }
-    }
+    cpu->soundTimer--;
   }
 }

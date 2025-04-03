@@ -23,7 +23,7 @@ typedef struct chip8 {
   uint16_t indexReg;
   // 16 8-bit general purpose registers
   uint8_t reg[16];
-  // A 64x32 display buffer
+  // A 64x32 display buffer (64 is the COLUMN and 32 is the ROW)
   uint8_t display[64 * 32];
   // A stack for 16-bit addresses
   uint16_t stack[16];
@@ -33,10 +33,9 @@ typedef struct chip8 {
   uint8_t delayTimer;
   // An 8-bit sound timer akin to the display timer
   uint8_t soundTimer;
+  bool playAudio;
   // 16 key hex keypad states
   bool keypad[16];
-  // Determine about of bits used in memory (for loading in roms)
-  uint8_t stored;
 } Chip8;
 
 extern const uint8_t FONTS[80];
@@ -49,5 +48,7 @@ bool LoadRom(Chip8 *, const char *);
 void Emulate(Chip8 *);
 // Free a Chip8 CPU structure
 void FreeChip8(Chip8 *);
+
+void DrawScreen(const Chip8 *chip8);
 
 #endif
