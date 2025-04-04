@@ -1,8 +1,14 @@
 #ifndef CHIP8_H
 #define CHIP8_H
+#include <fcntl.h>
+#include <raylib.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
+#include <unistd.h>
 
 // Chip8 instructions are in big-endian.
 // These macros will help us differentiate from "nibbles" of the instructions.
@@ -49,6 +55,8 @@ void Emulate(Chip8 *);
 // Free a Chip8 CPU structure
 void FreeChip8(Chip8 *);
 
-void DrawScreen(const Chip8 *chip8);
+void DrawScreen(const Chip8 *);
+
+void updateKeyPad(Chip8 *);
 
 #endif
