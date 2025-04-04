@@ -1,4 +1,13 @@
 #include "chip8.h"
+#include <fcntl.h>
+#include <raylib.h>
+#include <stdbool.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
+#include <unistd.h>
 
 // buffer size for read call
 #define BUFSIZE 4096
@@ -267,23 +276,32 @@ void Emulate(Chip8 *cpu) {
         // VX >> 1
         // Then stores the least significant bit of VX prior to the shift into
         // VF
+        // INSTRUCTION GROUP: 8XY6
+        // Shift VY one bit right, load VX with result, load VF with bit 0
         printf("8XY6\n");
-        cpu->reg[0xF] = cpu->reg[OPCODE_X(opcode)] & 0x1;
-        cpu->reg[OPCODE_X(opcode)] >>= 1;
+        flag = cpu->reg[OPCODE_X(opcode)] & 0x1;
+        cpu->reg[OPCODE_Y(opcode)] >>= 1;
+        cpu->reg[OPCODE_X(opcode)] = cpu->reg[OPCODE_Y(opcode)];
+        cpu->reg[0xF] = flag;
         break;
       case 0x7:
         // VX = VY - VX
         printf("8XY7\n");
-        cpu->reg[0xF] =
-            (cpu->reg[OPCODE_Y(opcode)] >= cpu->reg[OPCODE_X(opcode)]) ? 1 : 0;
+        uint8_t vx7, vy7;
+        vx7 = cpu->reg[OPCODE_X(opcode)];
+        vy7 = cpu->reg[OPCODE_Y(opcode)];
+        flag = (vy7 >= vx7) ? 1 : 0;
+
         cpu->reg[OPCODE_X(opcode)] =
             cpu->reg[OPCODE_Y(opcode)] - cpu->reg[OPCODE_X(opcode)];
+        cpu->reg[0xF] = flag;
         break;
       case 0xE:
         // VX << 1
         printf("8XYE\n");
-        cpu->reg[0xF] = (cpu->reg[OPCODE_X(opcode)] & 0x80) >> 7;
+        flag = (cpu->reg[OPCODE_X(opcode)] & 0x80) >> 7;
         cpu->reg[OPCODE_X(opcode)] <<= 1;
+        cpu->reg[0xF] = flag;
         break;
       }
       break;
@@ -358,6 +376,21 @@ void Emulate(Chip8 *cpu) {
       }
       break;
     case 0xE: {
+      uint8_t lowerEight = OPCODE_NN(opcode);
+      switch (lowerEight) {
+      case 0x9E:
+        printf("KEYOP 9E\n");
+        if (cpu->keypad[cpu->reg[OPCODE_X(opcode)]] != 0) {
+          cpu->pc += 2;
+        }
+        break;
+      case 0xA1:
+        printf("KEYOP A1\n");
+        if (cpu->keypad[cpu->reg[OPCODE_X(opcode)]] == 0) {
+          cpu->pc += 2;
+        }
+        break;
+      }
       break;
     }
     case 0xF: {
@@ -375,7 +408,6 @@ void Emulate(Chip8 *cpu) {
         while (!isPressed) {
           for (uint8_t i = 0; i < 16; i++) {
             if (cpu->keypad[i]) {
-              isPressed = true;
               cpu->reg[OPCODE_X(opcode)] = i;
               break;
             }
