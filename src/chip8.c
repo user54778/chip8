@@ -127,6 +127,7 @@ bool LoadRom(Chip8 *cpu, const char *path) {
 
 // Perform the Fetch-Decode-Execute loop with a Chip8 CPU.
 void Emulate(Chip8 *cpu) {
+  updateKeyPad(cpu);
   // Fetch -> Instruction is 2 bytes
   // Note that the opcodes are big-endian.
   //
@@ -380,13 +381,13 @@ void Emulate(Chip8 *cpu) {
       switch (lowerEight) {
       case 0x9E:
         printf("KEYOP 9E\n");
-        if (cpu->keypad[cpu->reg[OPCODE_X(opcode)]] != 0) {
+        if (cpu->keypad[cpu->reg[OPCODE_X(opcode)]]) {
           cpu->pc += 2;
         }
         break;
       case 0xA1:
         printf("KEYOP A1\n");
-        if (cpu->keypad[cpu->reg[OPCODE_X(opcode)]] == 0) {
+        if (!cpu->keypad[cpu->reg[OPCODE_X(opcode)]]) {
           cpu->pc += 2;
         }
         break;
@@ -402,17 +403,17 @@ void Emulate(Chip8 *cpu) {
         break;
       case 0x0A:
         printf("KEY\n");
-        updateKeyPad(cpu);
-
-        bool isPressed = false;
-        while (!isPressed) {
-          for (uint8_t i = 0; i < 16; i++) {
-            if (cpu->keypad[i]) {
-              cpu->reg[OPCODE_X(opcode)] = i;
-              break;
-            }
+        bool keyPressed = false;
+        for (uint8_t i = 0; i < 16; i++) {
+          if (cpu->keypad[i]) {
+            cpu->reg[OPCODE_X(opcode)] = i;
+            keyPressed = true;
+            break;
           }
-          break;
+        }
+        if (!keyPressed) {
+          cpu->pc -= 2;
+          return;
         }
         break;
       case 0x15:
@@ -429,6 +430,8 @@ void Emulate(Chip8 *cpu) {
         break;
       case 0x29:
         printf("SET I SPRITE ADDR\n");
+        // FONTS array is 5 bytes tall; index by multiplying by 5
+        cpu->indexReg = cpu->reg[OPCODE_X(opcode)] * 5;
         break;
       case 0x33:
         // Store binary-coded decimal representation of VX, with
@@ -468,6 +471,7 @@ void Emulate(Chip8 *cpu) {
 }
 
 void updateKeyPad(Chip8 *cpu) {
+  memset(cpu->keypad, 0, sizeof(cpu->keypad));
   // Chip8 keypad
   // 1 2 3 C
   // 4 5 6 D
@@ -478,23 +482,23 @@ void updateKeyPad(Chip8 *cpu) {
   // Q W E R
   // A S D F
   // Z X C V
-  cpu->keypad[0x1] = IsKeyPressed(KEY_ONE) || IsKeyPressed(KEY_KP_1);
-  cpu->keypad[0x2] = IsKeyPressed(KEY_TWO) || IsKeyPressed(KEY_KP_2);
-  cpu->keypad[0x3] = IsKeyPressed(KEY_THREE) || IsKeyPressed(KEY_KP_3);
-  cpu->keypad[0xC] = IsKeyPressed(KEY_FOUR) || IsKeyPressed(KEY_KP_4);
+  cpu->keypad[0x1] = IsKeyDown(KEY_ONE) || IsKeyDown(KEY_KP_1);
+  cpu->keypad[0x2] = IsKeyDown(KEY_TWO) || IsKeyDown(KEY_KP_2);
+  cpu->keypad[0x3] = IsKeyDown(KEY_THREE) || IsKeyDown(KEY_KP_3);
+  cpu->keypad[0xC] = IsKeyDown(KEY_FOUR) || IsKeyDown(KEY_KP_4);
 
-  cpu->keypad[0x4] = IsKeyPressed(KEY_Q);
-  cpu->keypad[0x5] = IsKeyPressed(KEY_W);
-  cpu->keypad[0x6] = IsKeyPressed(KEY_E);
-  cpu->keypad[0xD] = IsKeyPressed(KEY_R);
+  cpu->keypad[0x4] = IsKeyDown(KEY_Q);
+  cpu->keypad[0x5] = IsKeyDown(KEY_W);
+  cpu->keypad[0x6] = IsKeyDown(KEY_E);
+  cpu->keypad[0xD] = IsKeyDown(KEY_R);
 
-  cpu->keypad[0x7] = IsKeyPressed(KEY_A);
-  cpu->keypad[0x8] = IsKeyPressed(KEY_S);
-  cpu->keypad[0x9] = IsKeyPressed(KEY_D);
-  cpu->keypad[0xE] = IsKeyPressed(KEY_F);
+  cpu->keypad[0x7] = IsKeyDown(KEY_A);
+  cpu->keypad[0x8] = IsKeyDown(KEY_S);
+  cpu->keypad[0x9] = IsKeyDown(KEY_D);
+  cpu->keypad[0xE] = IsKeyDown(KEY_F);
 
-  cpu->keypad[0xA] = IsKeyPressed(KEY_Z);
-  cpu->keypad[0x0] = IsKeyPressed(KEY_X);
-  cpu->keypad[0xB] = IsKeyPressed(KEY_C);
-  cpu->keypad[0xF] = IsKeyPressed(KEY_V);
+  cpu->keypad[0xA] = IsKeyDown(KEY_Z);
+  cpu->keypad[0x0] = IsKeyDown(KEY_X);
+  cpu->keypad[0xB] = IsKeyDown(KEY_C);
+  cpu->keypad[0xF] = IsKeyDown(KEY_V);
 }

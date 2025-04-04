@@ -36,7 +36,7 @@ int main(int argc, char *argv[]) {
   SetTargetFPS(60);
 
   // Timing (in Hz)
-  const int instructionsPerSecond = 500;
+  const int instructionsPerSecond = 700;
   int delay = 1000000 / instructionsPerSecond;
 
   while (!WindowShouldClose()) {
